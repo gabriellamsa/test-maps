@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Interactive Google Maps Integration
+
+A modern, responsive Google Maps integration built with Next.js and TypeScript. This component provides a seamless way to implement interactive maps in your web applications.
+
+## Features
+
+- 🔍 Location search with Google Places Autocomplete
+- 📍 Automatic geolocation detection
+- 🎯 Interactive markers with animation
+- 🎨 Clean, modern UI with Tailwind CSS
+- 📱 Fully responsive design
+- ⚡ Built with Next.js 15 and TypeScript
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18.0 or later
+- A Google Maps API key with Places API enabled
+
+### Installation
+
+1. Clone the repository:
+
+```bash
+git clone [your-repository-url]
+```
+
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+3. Create a `.env.local` file in the root directory and add your Google Maps API key:
+
+```env
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_api_key_here
+```
+
+4. Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Usage
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The map component can be easily integrated into any Next.js application:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```tsx
+import Map from "@/components/Map";
 
-## Learn More
+export default function YourPage() {
+  return (
+    <div className="container mx-auto">
+      <Map />
+    </div>
+  );
+}
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Environment Variables
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Variable                          | Description                                      |
+| --------------------------------- | ------------------------------------------------ |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Your Google Maps API key with Places API enabled |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## License
 
-## Deploy on Vercel
+MIT
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Contributing
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Contributions are welcome! Please feel free to submit a Pull Request.
