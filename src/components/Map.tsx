@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 interface MapInstance {
   setCenter: (location: { lat: number; lng: number }) => void;
   setZoom: (zoom: number) => void;
+  controls: any;
 }
 
 interface MarkerInstance {
@@ -20,6 +21,7 @@ declare global {
         Animation: {
           DROP: number;
         };
+        ControlPosition: any;
         places: {
           Autocomplete: new (input: HTMLInputElement, options: any) => {
             addListener: (event: string, callback: () => void) => void;
@@ -44,6 +46,7 @@ export default function Map() {
   const isMountedRef = useRef(true);
   const autocompleteRef = useRef<any>(null);
   const mapInstanceRef = useRef<MapInstance | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
 
   const createMarker = (
     position: { lat: number; lng: number },
@@ -86,6 +89,30 @@ export default function Map() {
     ) {
       const place = autocompleteRef.current.getPlace();
       handlePlaceSelect(place, mapInstanceRef.current);
+    }
+  };
+
+  const handleRecenter = async () => {
+    if (!navigator.geolocation || !mapInstanceRef.current) return;
+
+    setIsLocating(true);
+    try {
+      const position = await new Promise<GeolocationPosition>(
+        (resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject);
+        }
+      );
+
+      const { latitude, longitude } = position.coords;
+      const location = { lat: latitude, lng: longitude };
+
+      mapInstanceRef.current.setCenter(location);
+      mapInstanceRef.current.setZoom(14);
+      createMarker(location, mapInstanceRef.current);
+    } catch (err) {
+      console.error("Error getting location:", err);
+    } finally {
+      setIsLocating(false);
     }
   };
 
@@ -137,6 +164,37 @@ export default function Map() {
 
         mapInstanceRef.current = mapInstance;
         createMarker({ lat: latitude, lng: longitude }, mapInstance);
+
+        const locationButton = document.createElement("button");
+        locationButton.className =
+          "bg-white w-10 h-10 rounded-xl shadow-md border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors";
+        locationButton.title = "Centralizar no local atual";
+        locationButton.innerHTML = `<span class='material-symbols-outlined' style='color:#2563eb;font-size:24px;'>my_location</span>`;
+        locationButton.style.margin = "8px";
+        locationButton.style.padding = "0";
+
+        locationButton.onclick = async () => {
+          locationButton.disabled = true;
+          locationButton.innerHTML = `<span class='material-symbols-outlined animate-spin' style='color:#2563eb;font-size:24px;'>my_location</span>`;
+          try {
+            const pos = await new Promise<GeolocationPosition>(
+              (resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject);
+              }
+            );
+            const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            mapInstance.setCenter(loc);
+            mapInstance.setZoom(14);
+            createMarker(loc, mapInstance);
+          } catch (e) {
+          } finally {
+            locationButton.disabled = false;
+            locationButton.innerHTML = `<span class='material-symbols-outlined' style='color:#2563eb;font-size:24px;'>my_location</span>`;
+          }
+        };
+        mapInstance.controls[
+          window.google.maps.ControlPosition.RIGHT_BOTTOM
+        ].push(locationButton);
 
         if (searchInputRef.current) {
           autocompleteRef.current = new window.google.maps.places.Autocomplete(
