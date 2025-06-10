@@ -22,6 +22,8 @@ declare global {
           DROP: number;
         };
         ControlPosition: any;
+        DirectionsService: new () => any;
+        DirectionsRenderer: new () => any;
         places: {
           Autocomplete: new (input: HTMLInputElement, options: any) => {
             addListener: (event: string, callback: () => void) => void;
@@ -47,6 +49,15 @@ export default function Map() {
   const autocompleteRef = useRef<any>(null);
   const mapInstanceRef = useRef<MapInstance | null>(null);
   const [isLocating, setIsLocating] = useState(false);
+  const directionsRendererRef = useRef<any>(null);
+  const currentPositionRef = useRef<{ lat: number; lng: number } | null>(null);
+  const [travelMode, setTravelMode] = useState<
+    "DRIVING" | "WALKING" | "BICYCLING" | "TRANSIT"
+  >("DRIVING");
+  const [routeInfo, setRouteInfo] = useState<{
+    distance: string;
+    duration: string;
+  } | null>(null);
 
   const createMarker = (
     position: { lat: number; lng: number },
@@ -71,13 +82,91 @@ export default function Map() {
       lng: place.geometry.location.lng(),
     };
 
-    mapInstance.setCenter(location);
-    mapInstance.setZoom(15);
-    createMarker(location, mapInstance);
+    const origin = currentPositionRef.current;
+    const destination = location;
 
-    // Limpa o input após a seleção
+    if (
+      origin &&
+      window.google?.maps?.DirectionsService &&
+      window.google?.maps?.DirectionsRenderer
+    ) {
+      const directionsService = new window.google.maps.DirectionsService();
+      if (directionsRendererRef.current) {
+        directionsRendererRef.current.setMap(null);
+      }
+      directionsRendererRef.current =
+        new window.google.maps.DirectionsRenderer();
+      directionsRendererRef.current.setMap(mapInstance as any);
+      directionsService.route(
+        {
+          origin,
+          destination,
+          travelMode,
+        },
+        (result: any, status: string) => {
+          if (status === "OK") {
+            directionsRendererRef.current.setDirections(result);
+            const leg = result.routes[0]?.legs[0];
+            if (leg) {
+              setRouteInfo({
+                distance: leg.distance.text,
+                duration: leg.duration.text,
+              });
+            }
+          } else {
+            setRouteInfo(null);
+            mapInstance.setCenter(location);
+            mapInstance.setZoom(15);
+            createMarker(location, mapInstance);
+          }
+        }
+      );
+    } else {
+      setRouteInfo(null);
+      mapInstance.setCenter(location);
+      mapInstance.setZoom(15);
+      createMarker(location, mapInstance);
+    }
+
     if (searchInputRef.current) {
       searchInputRef.current.value = "";
+    }
+  };
+
+  const handleTravelModeChange = (
+    mode: "DRIVING" | "WALKING" | "BICYCLING" | "TRANSIT"
+  ) => {
+    setTravelMode(mode);
+    if (
+      directionsRendererRef.current &&
+      directionsRendererRef.current.getDirections
+    ) {
+      const directions = directionsRendererRef.current.getDirections();
+      const destination = directions?.routes[0]?.legs[0]?.end_location;
+      if (destination && currentPositionRef.current && mapInstanceRef.current) {
+        const directionsService = new window.google.maps.DirectionsService();
+        directionsService.route(
+          {
+            origin: currentPositionRef.current,
+            destination,
+            travelMode: mode,
+          },
+          (result: any, status: string) => {
+            if (status === "OK") {
+              directionsRendererRef.current.setDirections(result);
+              const leg = result.routes[0]?.legs[0];
+              if (leg) {
+                setRouteInfo({
+                  distance: leg.distance.text,
+                  duration: leg.duration.text,
+                });
+              }
+            } else {
+              setRouteInfo(null);
+            }
+          }
+        );
+      }
     }
   };
 
@@ -109,6 +198,8 @@ export default function Map() {
       mapInstanceRef.current.setCenter(location);
       mapInstanceRef.current.setZoom(14);
       createMarker(location, mapInstanceRef.current);
+
+      currentPositionRef.current = { lat: latitude, lng: longitude };
     } catch (err) {
       console.error("Error getting location:", err);
     } finally {
@@ -154,6 +245,7 @@ export default function Map() {
         if (!isMountedRef.current || !mapRef.current) return;
 
         const { latitude, longitude } = position.coords;
+        currentPositionRef.current = { lat: latitude, lng: longitude };
         const mapInstance = new window.google.maps.Map(mapRef.current, {
           center: { lat: latitude, lng: longitude },
           zoom: 14,
@@ -168,7 +260,7 @@ export default function Map() {
         const locationButton = document.createElement("button");
         locationButton.className =
           "bg-white w-10 h-10 rounded-xl shadow-md border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors";
-        locationButton.title = "Centralizar no local atual";
+        locationButton.title = "Centralize at current location";
         locationButton.innerHTML = `<span class='material-symbols-outlined' style='color:#2563eb;font-size:24px;'>my_location</span>`;
         locationButton.style.margin = "8px";
         locationButton.style.padding = "0";
@@ -256,6 +348,27 @@ export default function Map() {
           </div>
         )}
         <div className="w-full h-full" ref={mapRef}></div>
+      </div>
+      <div className="flex items-center gap-2">
+        <label className="font-medium">Routes:</label>
+        <select
+          value={travelMode}
+          onChange={(e) => handleTravelModeChange(e.target.value as any)}
+          className="border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="DRIVING">Car</option>
+          <option value="WALKING">Walking</option>
+          <option value="BICYCLING">Bike</option>
+          <option value="TRANSIT">Public Transport </option>
+        </select>
+        {routeInfo && (
+          <div className="ml-4 text-sm text-gray-700">
+            <span className="font-semibold">Distance:</span>{" "}
+            {routeInfo.distance} &nbsp;|
+            <span className="font-semibold ml-2">Duration:</span>{" "}
+            {routeInfo.duration}
+          </div>
+        )}
       </div>
     </div>
   );
